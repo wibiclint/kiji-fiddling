@@ -113,6 +113,8 @@ Inspect the data in the table
 Create the item-item similarity list
 ------------------------------------
 
+
+
 Debugging
 ---------
 
@@ -120,9 +122,41 @@ Check system logs, something like:
 
     http://localhost:50030/logs/userlogs/job_20131112153730549_0008/attempt_20131112153730549_0008_m_000000_0/syslog
 
+Get the table layout in JSON:
+
+    kiji layout --table=$KIJI/user_ratings --do=dump --write-to=layout.json
+
 
 
 Stop the BentoBox
 -----------------
 
     bento stop
+
+
+TODO
+----
+* Might want to mention that Scalding does *not* let you put "=" in
+  command-line arguments
+* How to best debug?  How to print out streams?  Or parts of streams?
+* Hard to debug stuff
+    - I can write code that compiles, but fails because of what my schema is
+    - How to get good debug messages?
+    - Would be useful just to see what your streams look like
+    - Scalding does have this - [pipe].debug
+    - How to use log4j from Scalding?
+* Can I always get a key back from an entity id?
+* Would be good to get more clarity on exactly what I get from KijiInput when I
+  use qualified and family specs
+* Could not figure out how to operate on mixture of stuff from qualified column
+  and column family
+* Might be useful to have a series of small tutorials that get slowly more
+  complicated (like in Cascading)
+* Definitely need examples of how to do unit tests for Express!!!
+    - Critical for users
+    - Not really much documentation
+    - Could use just some trivial examples: table (with map-type) -> table
+      (with map-type), CSV -> CSV, etc.
+    - Having to retype all of the source/sink stuff is terrible, need a way to
+      get around this...
+* Would be nice to have some examples of log statements
