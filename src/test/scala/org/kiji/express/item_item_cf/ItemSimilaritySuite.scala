@@ -20,6 +20,7 @@
 package org.kiji.express.item_item_cf
 
 import scala.collection.mutable
+import scala.math.abs
 
 import cascading.tuple.Fields
 import com.twitter.scalding.Args
@@ -41,8 +42,25 @@ import org.kiji.schema.KijiTable
 import org.kiji.schema.KijiURI
 import org.kiji.schema.layout.KijiTableLayout
 
+// Unsavory hacks for convenient comparison of doubles:
+case class Precision(val p:Double)
+
+/*
+// Scala 2.10:
+implicit class DoubleWithAlmostEquals(val d:Double) extends AnyVal {
+    def ~=(d2:Double)(implicit p:Precision) = (d - d2).abs < p.p
+}
+*/
+class withAlmostEquals(d:Double) {
+    def ~=(d2:Double)(implicit p:Precision) = (d-d2).abs <= p.p
+}
+
 @RunWith(classOf[JUnitRunner])
 class ItemSimilaritySuite extends KijiSuite {
+  implicit def add_~=(d:Double) = new withAlmostEquals(d)
+
+  implicit val precision = Precision(0.001)
+
   val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilaritySuite])
 
   val avroLayout: KijiTableLayout = layout("user_ratings.json")
@@ -87,24 +105,48 @@ class ItemSimilaritySuite extends KijiSuite {
                   ---------------------
     sqrt(1.7*1.7 + 1.7*1.7) * sqrt(1.7*1 + 1.7*1.7)
 
+    = 1.0
 
+  - The only other valid similarities are between 10/11 and 20/21.  All of them have the same
+    score:
+
+    1.7 * -3.3 / ( sqrt(1.7*1.7 + 1.7*1.7) + sqrt(-3.3*-3.3) ) = -0.707
 
    */
 
   // Final output should look like:
   // itemA: Long, itemB: Long, similarity: Double
   def validateOutput(output: mutable.Buffer[(Long, Long, Double)]): Unit = {
-    val myVals = output.toList
-    logger.debug("Output of item-item similarity pipe = " + myVals)
-    //assert(myVals.size == 2)
-    output.foreach { case (itemA: Long, itemB: Long, rating: Double) =>
-      println(itemA + " " + itemB + " " + rating)
-    }
+    def doubleComp(a: Double, b: Double) = abs(a-b) < 0.01
+
+    // Convert to a Map so that we can check for the value of a particular pair
+    val pairs2scores = output
+        .toList
+        .map{ x: (Long, Long, Double) => {
+          val (itemA, itemB, score) = x
+          ((itemA, itemB), score)
+        }}
+        .toMap
+
+    assert(pairs2scores.size == 5)
+
+    assert(pairs2scores.contains((10,11)))
+    assert(pairs2scores.contains((10,20)))
+    assert(pairs2scores.contains((10,21)))
+    assert(pairs2scores.contains((11,20)))
+    assert(pairs2scores.contains((11,21)))
+
+    assert(pairs2scores((10,11)) ~= 1.0)
+    assert(pairs2scores((10,20)) ~= -0.707)
+    assert(pairs2scores((11,20)) ~= -0.707)
+    assert(pairs2scores((10,21)) ~= -0.707)
+    assert(pairs2scores((11,21)) ~= -0.707)
+
   }
 
   test("Similarity of two items with same users and same ratings is 1") {
-    logger.debug("Running this test!")
-    logger.debug("-----------------------------------------------")
+    //logger.debug("Running this test!")
+    //logger.debug("-----------------------------------------------")
     // TODO: What is "_" here for?  Args below?
     val jobTest = JobTest(new ItemSimilarity(_))
         .arg("table-uri", uri)
@@ -114,7 +156,7 @@ class ItemSimilaritySuite extends KijiSuite {
     // Run in local mode.
     jobTest.run.finish
     // Run in hadoop mode.
-    //jobTest.runHadoop.finish
+    jobTest.runHadoop.finish
   }
 }
 
