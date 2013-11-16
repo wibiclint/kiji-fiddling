@@ -56,12 +56,12 @@ class WithAlmostEquals(d:Double) {
 }
 
 @RunWith(classOf[JUnitRunner])
-class ItemSimilaritySuite extends KijiSuite {
+class ItemSimilarityCalculatorSuite extends KijiSuite {
   implicit def add_~=(d:Double) = new WithAlmostEquals(d)
 
   implicit val precision = Precision(0.001)
 
-  val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilaritySuite])
+  val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilarityCalculatorSuite])
 
   val avroLayout: KijiTableLayout = layout("user_ratings.json")
 
@@ -158,7 +158,7 @@ class ItemSimilaritySuite extends KijiSuite {
     //logger.debug("Running this test!")
     //logger.debug("-----------------------------------------------")
     // TODO: What is "_" here for?  Args below?
-    val jobTest = JobTest(new ItemSimilarity(_))
+    val jobTest = JobTest(new ItemSimilarityCalculator(_))
         .arg("table-uri", uri)
         .source(KijiInput(uri, Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo)), slices)
         .sink(Tsv("all-similarities"))(validateOutput)

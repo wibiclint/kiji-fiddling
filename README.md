@@ -38,7 +38,8 @@ Download & Start Bento
 
 Setup
 ------
-    export DOGFOOD_CF_HOME = <path/to/tutorial/root/dir>
+    export DOGFOOD_CF_HOME = path/to/tutorial/root/dir
+    export KIJI_CLASSPATH=target/kiji-express-item-item-cf-XXX.jar
 
 Install a Kiji instance.
 
@@ -113,7 +114,11 @@ Inspect the data in the table
 Create the item-item similarity list
 ------------------------------------
 
-
+    express job target/kiji-express-item-item-cf-XXX.jar \
+        org.kiji.express.item_item_cf.ItemSimilarityCalculator \
+        --ratings-table-uri ${KIJI}/user_ratings \
+        --similarity-table-uri ${KIJI}/item_item_similarities \
+        --hdfs
 
 Debugging
 ---------

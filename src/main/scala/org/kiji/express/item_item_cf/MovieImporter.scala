@@ -47,8 +47,7 @@ class MovieImporter(args: Args) extends KijiJob(args) {
       .write(KijiOutput(
           tableUri = args("table-uri"),
           columns = Map(
-              'rating -> ColumnFamilyOutputSpec("ratings", 'movie),
-              'user -> QualifiedColumnOutputSpec("info", "id"))))
+              'rating -> ColumnFamilyOutputSpec("ratings", 'movie))))
 
       /*
   // Get movie titles

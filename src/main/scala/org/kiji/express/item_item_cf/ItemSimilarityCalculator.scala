@@ -56,9 +56,9 @@ import org.kiji.express.item_item_cf.avro._
  *
  * @param args passed in from the command line.
  */
-class ItemSimilarity(args: Args) extends KijiJob(args) {
+class ItemSimilarityCalculator(args: Args) extends KijiJob(args) {
 
-  val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilarity])
+  val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilarityCalculator])
 
   def extractItemIdAndRating(slice: Seq[Cell[Double]]): Seq[(Long,Double)] = {
     slice.map { cell => (cell.qualifier.toLong, cell.datum) }
@@ -82,7 +82,7 @@ class ItemSimilarity(args: Args) extends KijiJob(args) {
   def createUserRatingsPipe: Pipe = {
     // Read all of the data out of the user ratings table
     val userRatingsPipe = KijiInput(
-        tableUri = args("table-uri"),
+        tableUri = args("ratings-table-uri"),
         columns = Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo))
         .read
 
@@ -230,7 +230,7 @@ class ItemSimilarity(args: Args) extends KijiJob(args) {
     allSimPipe
         .groupBy('itemA) {
           _.sortWithTake(('itemB, 'similarity) -> 'topSimPairs, 50)
-              { (x: (Long, Double), y: (Long, Double)) => x._2 < y._2 } }
+              { (x: (Long, Double), y: (Long, Double)) => x._2 > y._2 } }
           // Now we have tuples of ('itemA, 'topSimPairs = List[(Long, Double)]
 
         .map('topSimPairs -> 'mostSimilar) { x: List[(Long, Double)] => {
@@ -251,12 +251,25 @@ class ItemSimilarity(args: Args) extends KijiJob(args) {
   // (Includes only positive similarities)
   val simPipe = createItemItemSimilaritiesPipe(meanAdjustedUserRatingsPipe)
 
-  // Write the similarities out to a TSV for debugging
-  simPipe.write(Tsv("all-similarities"))
-
   // Sort by similarity and create avro records to store in a Kiji table
   val simRecordsPipe = createSimilarityRecordsPipe(simPipe)
+      .map('item -> 'entityId) { item: Long => EntityId(item) }
+      .project('entityId, 'mostSimilar)
+
+  simRecordsPipe.write(KijiOutput(
+    tableUri = args("similarity-table-uri"),
+    columns = Map(
+      'mostSimilar -> QualifiedColumnOutputSpec("most_similar", "most_similar"))))
+  /*
+  // If you do it this when instead then you get a crazy serialization error!
+  val kijiOutput = KijiOutput(
+    tableUri = args("similarity-table-uri"),
+    columns = Map(
+      'mostSimilar -> QualifiedColumnOutputSpec("most_similar", "most_similar")))
+
+  simRecordsPipe.write(kijiOutput)
+  */
 
   // Write the similarities to a Kiji table for later computation
-  simRecordsPipe.write(Tsv("sorted-similarities"))
+  //simRecordsPipe.write(Tsv("sorted-similarities"))
 }
