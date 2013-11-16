@@ -6,8 +6,8 @@
    your table layouts instead.
 */
 {
-  "name" : "user_ratings",
-  "description" : "User ratings of movies (movies are rows)",
+  "name" : "item_item_similarities",
+  "description" : "Top-M list of similar items, using adjusted cosine similarity",
   "keys_format" : {
     "org.kiji.schema.avro.RowKeyFormat2" : {
       "encoding" : "FORMATTED",
@@ -15,7 +15,7 @@
         "hash_size" : 2
       },
       "components" : [ {
-        "name" : "user_id",
+        "name" : "movie_id",
         "type" : "LONG"
       } ]
     }
@@ -31,25 +31,28 @@
     "compression_type" : "NONE",
     "families" : [ {
       "id" : 1,
-      "name" : "ratings",
-      "description" : "MovieIds -> ratings",
-      "map_schema" : {
-        "storage" : "UID",
-        "type" : "AVRO",
-        "avro_validation_policy" : "DEVELOPER",
-        "default_reader" : {
-          "uid" : 5
-        },
-        "readers" : [ {
-          "uid" : 5
-        } ],
-        "written" : [ {
-          "uid" : 5
-        } ],
-        "writers" : [ {
-          "uid" : 5
-        } ]
-      }
+      "name" : "most_similar",
+      "columns" : [ {
+        "id" : 1,
+        "name" : "most_similar",
+        "column_schema" : {
+          "storage" : "UID",
+          "type" : "AVRO",
+          "avro_validation_policy" : "DEVELOPER",
+          "default_reader" : {
+            "uid" : 9
+          },
+          "readers" : [ {
+            "uid" : 9
+          } ],
+          "written" : [ {
+            "uid" : 9
+          } ],
+          "writers" : [ {
+            "uid" : 9
+          } ]
+        }
+      } ]
     } ]
   } ],
   "version" : "layout-1.3",

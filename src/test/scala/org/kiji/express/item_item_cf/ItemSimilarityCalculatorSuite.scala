@@ -21,6 +21,7 @@ package org.kiji.express.item_item_cf
 
 import scala.collection.mutable
 import scala.math.abs
+import scala.collection.JavaConverters._
 
 import cascading.tuple.Fields
 import com.twitter.scalding.Args
@@ -34,13 +35,21 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
+import org.apache.commons.io.IOUtils
+import java.io.InputStream
 
 import org.kiji.express._
 import org.kiji.express.flow._
 import org.kiji.express.flow.util.Resources.doAndRelease
 import org.kiji.schema.KijiTable
+import org.kiji.schema.util.InstanceBuilder
+
+import org.kiji.schema.Kiji
 import org.kiji.schema.KijiURI
 import org.kiji.schema.layout.KijiTableLayout
+
+import org.kiji.schema.shell.api.Client
+import org.kiji.express.item_item_cf.avro._
 
 // Unsavory hacks for convenient comparison of doubles:
 case class Precision(val p:Double)
@@ -57,29 +66,66 @@ class WithAlmostEquals(d:Double) {
 
 @RunWith(classOf[JUnitRunner])
 class ItemSimilarityCalculatorSuite extends KijiSuite {
+  def readResource(resourcePath: String): String = {
+    try {
+      val istream: InputStream =
+        classOf[ItemSimilarityCalculatorSuite].getClassLoader().getResourceAsStream(resourcePath)
+      val content: String = IOUtils.toString(istream)
+      istream.close
+      content
+    } catch {
+      case e: Exception => "Problem reading resource \"" + resourcePath + "\""
+    }
+  }
+
+  def makeTestKijiTableFromDDL(
+    ddlName: String,
+    tableName: String,
+    instanceName: String = "default_%s".format(counter.incrementAndGet())
+  ): KijiTable = {
+
+    // Create the table
+    val ddl: String = readResource(ddlName)
+
+    // Create the instance
+    val kiji: Kiji = new InstanceBuilder(instanceName).build()
+    val kijiUri: KijiURI = kiji.getURI()
+
+    val client: Client = Client.newInstance(kijiUri)
+    client.executeUpdate(ddl)
+
+    // Get a pointer to the instance
+    //val kiji: Kiji = Kiji.Factory.open(kijiUri)
+    val table: KijiTable = kiji.openTable(tableName)
+    kiji.release()
+    return table
+  }
+
   implicit def add_~=(d:Double) = new WithAlmostEquals(d)
-
   implicit val precision = Precision(0.001)
-
   val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilarityCalculatorSuite])
 
-  val avroLayout: KijiTableLayout = layout("user_ratings.json")
+  // Create test versions of the tables for user ratings and for similarities
+  val userRatingsUri: String = doAndRelease(
+      makeTestKijiTable(layout("user_ratings.json")))
+      { table: KijiTable => table.getURI().toString() }
 
-  val uri: String = doAndRelease(makeTestKijiTable(avroLayout)) { table: KijiTable =>
-    table.getURI().toString()
-  }
+  val itemItemSimilaritiesUri: String = doAndRelease(
+      makeTestKijiTableFromDDL(
+        ddlName = "item_item_similarities.ddl",
+        tableName = "item_item_similarities"))
+      { table: KijiTable => table.getURI().toString() }
 
   // Example in which user 100 and user 101 have both given item 0 5 stars.
   // Each has also reviewed another item and given that item a different rating, (this ensures
   // that the mean-adjusted rating is not a zero).
   val version: Long = 0L
   val slices: List[(EntityId, Seq[Cell[Double]])] = List(
-    // User 0 gave item 0 a 5.0 and item 1 a 0.0
     (EntityId(100L), List(
+        //                     item           score
         Cell[Double]("ratings", "10", version, 5.0),
         Cell[Double]("ratings", "11", version, 5.0),
         Cell[Double]("ratings", "20", version, 0.0))),
-    // User 1 gave item 0 a 5.0 and item 2 a 0.0
     (EntityId(101L), List(
         Cell[Double]("ratings", "10", version, 5.0),
         Cell[Double]("ratings", "11", version, 5.0),
@@ -116,53 +162,44 @@ class ItemSimilarityCalculatorSuite extends KijiSuite {
 
    */
 
-  // Final output should look like:
-  // itemA: Long, itemB: Long, similarity: Double
-  def validateOutput(output: mutable.Buffer[(Long, Long, Double)]): Unit = {
-    def doubleComp(a: Double, b: Double) = abs(a-b) < 0.01
-
-    // Convert to a Map so that we can check for the value of a particular pair
+  def validateOutput(output: mutable.Buffer[(EntityId, List[Cell[AvroSortedSimilarItems]])]): Unit = {
+    assert(output.size === 2)
     val pairs2scores = output
-        .toList
-        .map{ x: (Long, Long, Double) => {
-          val (itemA, itemB, score) = x
-          ((itemA, itemB), score)
+        .map { x: (EntityId, List[Cell[AvroSortedSimilarItems]]) => {
+          val (eid, simItems) = x
+          assert(simItems.size === 1)
+          val itemA: Long = eid.components(0).asInstanceOf[Long]
+          val topItems = simItems.head.datum.getTopItems.asScala
+          assert(topItems.size === 1)
+          val sim: AvroItemSimilarity = topItems.head
+          val itemB: Long = sim.getItemId
+          val similarity: Double = sim.getSimilarity
+          ((itemA, itemB), similarity)
         }}
         .toMap
-
-    //assert(pairs2scores.size == 5)
-    assert(pairs2scores.size == 1)
-
     assert(pairs2scores.contains((10,11)))
     assert(pairs2scores((10,11)) ~= 1.0)
 
-    /*
-    assert(pairs2scores.contains((10,20)))
-    assert(pairs2scores.contains((10,21)))
-    assert(pairs2scores.contains((11,20)))
-    assert(pairs2scores.contains((11,21)))
-
-    assert(pairs2scores((10,20)) ~= -0.707)
-    assert(pairs2scores((11,20)) ~= -0.707)
-    assert(pairs2scores((10,21)) ~= -0.707)
-    assert(pairs2scores((11,21)) ~= -0.707)
-    */
-
-  }
-  def validateRecordOutput(output: mutable.Buffer[Any]): Unit = {
-    logger.debug("-----------------------------------------------")
-    logger.debug(output.getClass.toString)
+    assert(pairs2scores.contains((11,10)))
+    assert(pairs2scores((11,10)) ~= 1.0)
   }
 
   test("Similarity of two items with same users and same ratings is 1") {
-    //logger.debug("Running this test!")
-    //logger.debug("-----------------------------------------------")
-    // TODO: What is "_" here for?  Args below?
     val jobTest = JobTest(new ItemSimilarityCalculator(_))
-        .arg("table-uri", uri)
-        .source(KijiInput(uri, Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo)), slices)
-        .sink(Tsv("all-similarities"))(validateOutput)
-        .sink(Tsv("sorted-similarities"))(validateRecordOutput)
+        .arg("ratings-table-uri", userRatingsUri)
+        .arg("similarity-table-uri", itemItemSimilaritiesUri)
+        .source(
+            KijiInput(
+                userRatingsUri,
+                Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo)),
+            slices)
+        .sink(KijiOutput(itemItemSimilaritiesUri,
+            Map('mostSimilar -> QualifiedColumnOutputSpec(
+                "most_similar",
+                "most_similar",
+                specificClass = classOf[AvroSortedSimilarItems]
+                ))))
+            {validateOutput}
 
     // Run in local mode.
     jobTest.run.finish

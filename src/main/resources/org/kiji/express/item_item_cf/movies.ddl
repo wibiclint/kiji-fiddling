@@ -5,7 +5,7 @@ CREATE TABLE item_item_similarities
   ROW KEY FORMAT (movie_id LONG)
   WITH LOCALITY GROUP default WITH DESCRIPTION 'Main locality group' (
     FAMILY most_similar ( COLUMN most_similar
-      WITH SCHEMA CLASS org.kiji.express.item_item_cf.avro.AvroSortedSimilarItems )
+      WITH SCHEMA AVRO org.kiji.express.item_item_cf.avro.AvroSortedSimilarItems )
   );
 
 CREATE TABLE user_ratings WITH DESCRIPTION 'User ratings of movies (movies are rows)'

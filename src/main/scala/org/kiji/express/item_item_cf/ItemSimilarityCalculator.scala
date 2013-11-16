@@ -259,17 +259,9 @@ class ItemSimilarityCalculator(args: Args) extends KijiJob(args) {
   simRecordsPipe.write(KijiOutput(
     tableUri = args("similarity-table-uri"),
     columns = Map(
-      'mostSimilar -> QualifiedColumnOutputSpec("most_similar", "most_similar"))))
-  /*
-  // If you do it this when instead then you get a crazy serialization error!
-  val kijiOutput = KijiOutput(
-    tableUri = args("similarity-table-uri"),
-    columns = Map(
-      'mostSimilar -> QualifiedColumnOutputSpec("most_similar", "most_similar")))
-
-  simRecordsPipe.write(kijiOutput)
-  */
-
-  // Write the similarities to a Kiji table for later computation
-  //simRecordsPipe.write(Tsv("sorted-similarities"))
+      'mostSimilar -> QualifiedColumnOutputSpec(
+          "most_similar",
+          "most_similar",
+          specificClass = classOf[AvroSortedSimilarItems]
+        ))))
 }
