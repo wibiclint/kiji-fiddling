@@ -51,58 +51,9 @@ import org.kiji.schema.layout.KijiTableLayout
 import org.kiji.schema.shell.api.Client
 import org.kiji.express.item_item_cf.avro._
 
-// Unsavory hacks for convenient comparison of doubles:
-case class Precision(val p:Double)
-
-/*
-// Scala 2.10:
-implicit class DoubleWithAlmostEquals(val d:Double) extends AnyVal {
-    def ~=(d2:Double)(implicit p:Precision) = (d - d2).abs < p.p
-}
-*/
-class WithAlmostEquals(d:Double) {
-    def ~=(d2:Double)(implicit p:Precision) = (d-d2).abs <= p.p
-}
-
 @RunWith(classOf[JUnitRunner])
-class ItemSimilarityCalculatorSuite extends KijiSuite {
-  def readResource(resourcePath: String): String = {
-    try {
-      val istream: InputStream =
-        classOf[ItemSimilarityCalculatorSuite].getClassLoader().getResourceAsStream(resourcePath)
-      val content: String = IOUtils.toString(istream)
-      istream.close
-      content
-    } catch {
-      case e: Exception => "Problem reading resource \"" + resourcePath + "\""
-    }
-  }
+class ItemSimilarityCalculatorSuite extends ItemItemSuite {
 
-  def makeTestKijiTableFromDDL(
-    ddlName: String,
-    tableName: String,
-    instanceName: String = "default_%s".format(counter.incrementAndGet())
-  ): KijiTable = {
-
-    // Create the table
-    val ddl: String = readResource(ddlName)
-
-    // Create the instance
-    val kiji: Kiji = new InstanceBuilder(instanceName).build()
-    val kijiUri: KijiURI = kiji.getURI()
-
-    val client: Client = Client.newInstance(kijiUri)
-    client.executeUpdate(ddl)
-
-    // Get a pointer to the instance
-    //val kiji: Kiji = Kiji.Factory.open(kijiUri)
-    val table: KijiTable = kiji.openTable(tableName)
-    kiji.release()
-    return table
-  }
-
-  implicit def add_~=(d:Double) = new WithAlmostEquals(d)
-  implicit val precision = Precision(0.001)
   val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilarityCalculatorSuite])
 
   // Create test versions of the tables for user ratings and for similarities
