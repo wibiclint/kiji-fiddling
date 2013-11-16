@@ -51,13 +51,13 @@ implicit class DoubleWithAlmostEquals(val d:Double) extends AnyVal {
     def ~=(d2:Double)(implicit p:Precision) = (d - d2).abs < p.p
 }
 */
-class withAlmostEquals(d:Double) {
+class WithAlmostEquals(d:Double) {
     def ~=(d2:Double)(implicit p:Precision) = (d-d2).abs <= p.p
 }
 
 @RunWith(classOf[JUnitRunner])
 class ItemSimilaritySuite extends KijiSuite {
-  implicit def add_~=(d:Double) = new withAlmostEquals(d)
+  implicit def add_~=(d:Double) = new WithAlmostEquals(d)
 
   implicit val precision = Precision(0.001)
 
@@ -112,6 +112,8 @@ class ItemSimilaritySuite extends KijiSuite {
 
     1.7 * -3.3 / ( sqrt(1.7*1.7 + 1.7*1.7) + sqrt(-3.3*-3.3) ) = -0.707
 
+  - All of the negative ratings should be filtered out.
+
    */
 
   // Final output should look like:
@@ -128,20 +130,28 @@ class ItemSimilaritySuite extends KijiSuite {
         }}
         .toMap
 
-    assert(pairs2scores.size == 5)
+    //assert(pairs2scores.size == 5)
+    assert(pairs2scores.size == 1)
 
     assert(pairs2scores.contains((10,11)))
+    assert(pairs2scores((10,11)) ~= 1.0)
+
+    /*
     assert(pairs2scores.contains((10,20)))
     assert(pairs2scores.contains((10,21)))
     assert(pairs2scores.contains((11,20)))
     assert(pairs2scores.contains((11,21)))
 
-    assert(pairs2scores((10,11)) ~= 1.0)
     assert(pairs2scores((10,20)) ~= -0.707)
     assert(pairs2scores((11,20)) ~= -0.707)
     assert(pairs2scores((10,21)) ~= -0.707)
     assert(pairs2scores((11,21)) ~= -0.707)
+    */
 
+  }
+  def validateRecordOutput(output: mutable.Buffer[Any]): Unit = {
+    logger.debug("-----------------------------------------------")
+    logger.debug(output.getClass.toString)
   }
 
   test("Similarity of two items with same users and same ratings is 1") {
@@ -151,12 +161,13 @@ class ItemSimilaritySuite extends KijiSuite {
     val jobTest = JobTest(new ItemSimilarity(_))
         .arg("table-uri", uri)
         .source(KijiInput(uri, Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo)), slices)
-        .sink(Tsv("foo"))(validateOutput)
+        .sink(Tsv("all-similarities"))(validateOutput)
+        .sink(Tsv("sorted-similarities"))(validateRecordOutput)
 
     // Run in local mode.
     jobTest.run.finish
     // Run in hadoop mode.
-    jobTest.runHadoop.finish
+    //jobTest.runHadoop.finish
   }
 }
 

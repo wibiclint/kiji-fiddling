@@ -20,6 +20,7 @@
 package org.kiji.express.item_item_cf
 
 import scala.math.sqrt
+import scala.collection.JavaConverters.seqAsJavaListConverter
 
 import cascading.pipe.Pipe
 import cascading.pipe.joiner.LeftJoin
@@ -29,6 +30,8 @@ import org.slf4j.LoggerFactory
 
 import org.kiji.express._
 import org.kiji.express.flow._
+
+import org.kiji.express.item_item_cf.avro._
 
 // Without this, writing functions that operate on multiple fields at once is terrible...
 //import com.twitter.scalding.FunctionImplicits._
@@ -92,14 +95,15 @@ class ItemSimilarity(args: Args) extends KijiJob(args) {
         .project('userId, 'itemId, 'rating)
 
         // TODO: Make this into a macro / or a method???
+        /*
         .map(('userId, 'itemId, 'rating) -> 'foo) { x: (Long, Long, Double) => {
           val (userId: Long, itemId: Long, rating: Double) = x
           logger.debug("userId: " + userId + " itemId: " + itemId + " rating: " + rating)
           0
         }}
         .discard('foo)
+        */
 
-    //new Each(userRatingsPipe, new Debug())
     userRatingsPipe
   }
 
@@ -150,7 +154,6 @@ class ItemSimilarity(args: Args) extends KijiJob(args) {
             // Now compute the products for every pair of items and group by itemA, itemB.
             // Note that we no longer need the userId.
             .flatMapTo('ratingList -> ('itemA, 'itemB, 'dotProductTerm)) { getRatingPairProducts }
-            .debug
     }
 
     def createItemVectorNormPipe: Pipe = {
@@ -162,7 +165,6 @@ class ItemSimilarity(args: Args) extends KijiJob(args) {
             .project('itemId, 'normSquared)
             .map('normSquared -> 'norm) { normSquared: Double => sqrt(normSquared) }
             .discard('normSquared)
-            .debug
     }
 
     // Get the pipes for the dot products and the norms and join them on the pairs of items used to
@@ -201,67 +203,60 @@ class ItemSimilarity(args: Args) extends KijiJob(args) {
         }}
 
 
-    simPipe
+    // Filter out any negative similarities
+    val positiveSims = simPipe
+        .filter('similarity) { sim: Double => sim > 0 }
+
+    positiveSims
   }
 
+  /**
+   * Sort (itemA, itemB, similarity) tuples by similarity (for a given pair of tuples) and store in
+   * Avro records.  Remember for a tuple (itemA, itemB, similarity) to populate the similarity
+   * vectors for itemA *and* for itemB.
+   *
+   */
+  def createSimilarityRecordsPipe(simPipe: Pipe): Pipe = {
+
+    // Create similarities from itemB -> itemA from itemA -> itemB tuples
+    val twistedSimPipe = simPipe
+      .map(('itemA, 'itemB, 'similarity) -> ('itemA, 'itemB, 'similarity))
+      { x: (Long, Long, Double) => (x._2, x._1, x._3) }
+
+    // Combine the two streams, giving us all combinations of item pairs
+    val allSimPipe = simPipe ++ twistedSimPipe
+
+    // Group by the first item in the pair and sort to get a sorted list of item similarities
+    allSimPipe
+        .groupBy('itemA) {
+          _.sortWithTake(('itemB, 'similarity) -> 'topSimPairs, 50)
+              { (x: (Long, Double), y: (Long, Double)) => x._2 < y._2 } }
+          // Now we have tuples of ('itemA, 'topSimPairs = List[(Long, Double)]
+
+        .map('topSimPairs -> 'mostSimilar) { x: List[(Long, Double)] => {
+          val simList = x.map { y: (Long, Double) => new AvroItemSimilarity(y._1, y._2) }
+          new AvroSortedSimilarItems(simList.asJava)
+        }}
+        .rename('itemA, 'item)
+        .project('item, 'mostSimilar)
+  }
+
+  // Read in user ratings for various items
   val userRatingsPipe = createUserRatingsPipe
+
+  // Calculate the mean rating of each user and normalize the ratings accordingly
   val meanAdjustedUserRatingsPipe = createMeanAdjustedUserRatingsPipe(userRatingsPipe)
+
+  // Compute cosine similarity between pairs of item vectors
+  // (Includes only positive similarities)
   val simPipe = createItemItemSimilaritiesPipe(meanAdjustedUserRatingsPipe)
 
+  // Write the similarities out to a TSV for debugging
+  simPipe.write(Tsv("all-similarities"))
 
-  simPipe.write(Tsv("foo"))
+  // Sort by similarity and create avro records to store in a Kiji table
+  val simRecordsPipe = createSimilarityRecordsPipe(simPipe)
+
+  // Write the similarities to a Kiji table for later computation
+  simRecordsPipe.write(Tsv("sorted-similarities"))
 }
-
-/*
-class ItemSimilaritySimple(args: Args) extends KijiJob(args) {
-
-  def extractItemIdAndRating(slice: Seq[Cell[Double]]): Seq[(Long,Double)] = {
-    slice.map { cell => (cell.qualifier.toLong, cell.datum) }
-  }
-
-  // Read all of the data out of the user ratings table
-  KijiInput(
-      tableUri = args("table-uri"),
-      columns = Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo))
-      .read
-
-      // Extract the userIds
-      .map('entityId -> 'userId) { eid: EntityId => eid.components(0) }
-
-      // Extract the ratings
-      .flatMap('ratingInfo -> ('itemId, 'rating)) { extractItemIdAndRating }
-
-      .project('userId, 'itemId, 'rating)
-      .write(Tsv("foo"))
-}
-*/
-
-
-
-/*
-
-
-
-class ItemSimilarity(args: Args) extends KijiJob(args) {
-
-  def extractItemIdAndRating(userId: Long, slice: Seq[Cell[Double]]): Seq[(Long, Long,Double)] = {
-    slice.map { cell => (userId, cell.qualifier.toLong, cell.datum) }
-  }
-
-  // Read all of the data out of the user ratings table
-  val userPipe = KijiInput(
-      tableUri = args("table-uri"),
-      columns = Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo))
-      .read
-
-      // Extract the userIds
-      .map('entityId -> 'userId) { eid: EntityId => eid.components(0) }
-
-      // Extract the ratings
-      .flatMapTo(('userId, 'ratingInfo) -> ('userId, 'itemId, 'rating)) { extractItemIdAndRating }
-
-
-
-  .write(Tsv("foo"))
-}
-*/

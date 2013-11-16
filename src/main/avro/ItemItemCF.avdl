@@ -1,0 +1,14 @@
+@namespace("org.kiji.express.item_item_cf.avro")
+protocol ItemItemCF {
+
+  // Similarity to another item
+  record AvroItemSimilarity {
+    long item_id;
+    double similarity;
+  }
+
+  record AvroSortedSimilarItems {
+    array<AvroItemSimilarity> top_items;
+  }
+
+}
