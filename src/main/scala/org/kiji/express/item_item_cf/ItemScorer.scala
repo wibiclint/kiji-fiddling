@@ -39,7 +39,7 @@ import org.kiji.express.item_item_cf.avro._
  *
  * @param args passed in from the command line.
  */
-class ItemScorer(args: Args) extends KijiJob(args) {
+class ItemScorer(args: Args) extends ItemItemJob(args) {
 
   val user = args("user").toLong
   val userEntityId = EntityId(user)
@@ -66,14 +66,21 @@ class ItemScorer(args: Args) extends KijiJob(args) {
       ) -> 'most_similar))
       // We care about only the data for one item
       .filter('entityId) { eid: EntityId => eid == itemEntityId }
+      //.map('entityId -> 'itemId) { eid: EntityId => eid.components(0) }
       // Extract out the itemId and similarity score for the similar items
-      .flatMap('most_similar -> ('otherItem, 'similarity)) { extractItemIdAndSimilarity }
+      .flatMap('most_similar -> ('similarItem, 'similarity)) { extractItemIdAndSimilarity }
+      //.project('itemId, 'similarItem, 'similarity)
+      .project('similarItem, 'similarity)
 
-      .write(Tsv("foo"))
 
-  // Get a list of all of the items that the user has rated
+  // Read in user ratings for various items
+  val userRatingsPipe = createUserRatingsPipe(Some(args("user").toLong))
 
   // Select only the most similar items that the user has rated
+  val mostSimilarItemsThatUserHasRatedPipe = mostSimilarPipe
+      .joinWithSmaller('similarItem -> 'itemId, userRatingsPipe)
+      .project('similarItem, 'similarity, 'rating)
+      .write(Tsv("foo"))
 
   // Sort, and then take the top K
 }

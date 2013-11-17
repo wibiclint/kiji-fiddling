@@ -100,5 +100,38 @@ abstract class ItemItemSuite extends KijiSuite {
   implicit def add_~=(d:Double) = new WithAlmostEquals(d)
   implicit val precision = Precision(0.001)
 
-}
+  // Create test versions of the tables for user ratings and for similarities
+  val userRatingsUri: String = doAndRelease(
+      makeTestKijiTable(layout("user_ratings.json")))
+      { table: KijiTable => table.getURI().toString() }
 
+  val itemItemSimilaritiesUri: String = doAndRelease(
+      makeTestKijiTableFromDDL(
+        ddlName = "item_item_similarities.ddl",
+        tableName = "item_item_similarities"))
+      { table: KijiTable => table.getURI().toString() }
+
+  // Example in which user 100 and user 101 have both given item 0 5 stars.
+  // Each has also reviewed another item and given that item a different rating, (this ensures
+  // that the mean-adjusted rating is not a zero).
+  val version: Long = 0L
+  val userRatingsSlices: List[(EntityId, Seq[Cell[Double]])] = List(
+    (EntityId(100L), List(
+        //                     item           score
+        Cell[Double]("ratings", "10", version, 5.0),
+        Cell[Double]("ratings", "11", version, 5.0),
+        Cell[Double]("ratings", "20", version, 0.0))),
+    (EntityId(101L), List(
+        Cell[Double]("ratings", "10", version, 5.0),
+        Cell[Double]("ratings", "11", version, 5.0),
+        Cell[Double]("ratings", "21", version, 0.0))))
+
+  val kijiInputUserRatings = KijiInput(userRatingsUri, Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo))
+  val kijiOutputItemSimilarities = KijiOutput(itemItemSimilaritiesUri,
+      Map('mostSimilar -> QualifiedColumnOutputSpec(
+          "most_similar",
+          "most_similar",
+          specificClass = classOf[AvroSortedSimilarItems]
+          )))
+
+}

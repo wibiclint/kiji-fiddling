@@ -56,13 +56,10 @@ import org.kiji.express.item_item_cf.avro._
  *
  * @param args passed in from the command line.
  */
-class ItemSimilarityCalculator(args: Args) extends KijiJob(args) {
+class ItemSimilarityCalculator(args: Args) extends ItemItemJob(args) {
 
   val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilarityCalculator])
 
-  def extractItemIdAndRating(slice: Seq[Cell[Double]]): Seq[(Long,Double)] = {
-    slice.map { cell => (cell.qualifier.toLong, cell.datum) }
-  }
 
   def getRatingPairProducts(itemsAndRatings: List[(Long, Double)]) = {
     for {
@@ -76,36 +73,6 @@ class ItemSimilarityCalculator(args: Args) extends KijiJob(args) {
   //------------------------------------------------------------------------------------------------
   // Code to create various pipes
 
-  /**
-   * Create a basic pipe with the raw input data.
-   */
-  def createUserRatingsPipe: Pipe = {
-    // Read all of the data out of the user ratings table
-    val userRatingsPipe = KijiInput(
-        tableUri = args("ratings-table-uri"),
-        columns = Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo))
-        .read
-
-        // Extract the userIds
-        .map('entityId -> 'userId) { eid: EntityId => eid.components(0) }
-
-        // Extract the ratings
-        .flatMap('ratingInfo -> ('itemId, 'rating)) { extractItemIdAndRating }
-
-        .project('userId, 'itemId, 'rating)
-
-        // TODO: Make this into a macro / or a method???
-        /*
-        .map(('userId, 'itemId, 'rating) -> 'foo) { x: (Long, Long, Double) => {
-          val (userId: Long, itemId: Long, rating: Double) = x
-          logger.debug("userId: " + userId + " itemId: " + itemId + " rating: " + rating)
-          0
-        }}
-        .discard('foo)
-        */
-
-    userRatingsPipe
-  }
 
   /**
    * Create a pipe with the mean-adjusted user ratings.
@@ -242,7 +209,7 @@ class ItemSimilarityCalculator(args: Args) extends KijiJob(args) {
   }
 
   // Read in user ratings for various items
-  val userRatingsPipe = createUserRatingsPipe
+  val userRatingsPipe = createUserRatingsPipe()
 
   // Calculate the mean rating of each user and normalize the ratings accordingly
   val meanAdjustedUserRatingsPipe = createMeanAdjustedUserRatingsPipe(userRatingsPipe)

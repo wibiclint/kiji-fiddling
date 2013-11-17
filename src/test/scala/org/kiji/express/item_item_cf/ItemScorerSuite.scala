@@ -55,19 +55,12 @@ import org.kiji.express.item_item_cf.avro._
 class ItemScorerSuite extends ItemItemSuite {
   val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilarityCalculatorSuite])
 
-  val itemItemSimilaritiesUri: String = doAndRelease(
-      makeTestKijiTableFromDDL(
-        ddlName = "item_item_similarities.ddl",
-        tableName = "item_item_similarities"))
-      { table: KijiTable => table.getURI().toString() }
-
   val myUser: Long = 100L
   val myItem: Long = 10L
 
   // Example in which user 100 and user 101 have both given item 0 5 stars.
   // Each has also reviewed another item and given that item a different rating, (this ensures
   // that the mean-adjusted rating is not a zero).
-  val version: Long = 0L
   val avroSortedSimilarItems = new AvroSortedSimilarItems(
       List(new AvroItemSimilarity(11, 0.5)).asJava
   )
@@ -81,13 +74,14 @@ class ItemScorerSuite extends ItemItemSuite {
             avroSortedSimilarItems)
           )))
 
-  def validateOutput(output: mutable.Buffer[Any]): Unit = {
+  def validateOutput(output: mutable.Buffer[(Long, Double, Double)]): Unit = {
     println(output)
   }
 
   test("Hmmmm") {
     val jobTest = JobTest(new ItemScorer(_))
         .arg("similarity-table-uri", itemItemSimilaritiesUri)
+        .arg("ratings-table-uri", userRatingsUri)
         .arg("user", myUser.toString)
         .arg("item", myItem.toString)
         .source(KijiInput(
@@ -98,6 +92,7 @@ class ItemScorerSuite extends ItemItemSuite {
                   "most_similar",
                   specificRecord = classOf[AvroSortedSimilarItems]
             ) -> 'most_similar)), itemSimSlices)
+        .source(kijiInputUserRatings, userRatingsSlices)
         .sink(Tsv("foo")) { validateOutput }
 
     // Run in local mode.

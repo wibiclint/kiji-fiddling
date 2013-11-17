@@ -56,31 +56,7 @@ class ItemSimilarityCalculatorSuite extends ItemItemSuite {
 
   val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilarityCalculatorSuite])
 
-  // Create test versions of the tables for user ratings and for similarities
-  val userRatingsUri: String = doAndRelease(
-      makeTestKijiTable(layout("user_ratings.json")))
-      { table: KijiTable => table.getURI().toString() }
 
-  val itemItemSimilaritiesUri: String = doAndRelease(
-      makeTestKijiTableFromDDL(
-        ddlName = "item_item_similarities.ddl",
-        tableName = "item_item_similarities"))
-      { table: KijiTable => table.getURI().toString() }
-
-  // Example in which user 100 and user 101 have both given item 0 5 stars.
-  // Each has also reviewed another item and given that item a different rating, (this ensures
-  // that the mean-adjusted rating is not a zero).
-  val version: Long = 0L
-  val slices: List[(EntityId, Seq[Cell[Double]])] = List(
-    (EntityId(100L), List(
-        //                     item           score
-        Cell[Double]("ratings", "10", version, 5.0),
-        Cell[Double]("ratings", "11", version, 5.0),
-        Cell[Double]("ratings", "20", version, 0.0))),
-    (EntityId(101L), List(
-        Cell[Double]("ratings", "10", version, 5.0),
-        Cell[Double]("ratings", "11", version, 5.0),
-        Cell[Double]("ratings", "21", version, 0.0))))
 
   /* Results we should see:
 
@@ -139,18 +115,8 @@ class ItemSimilarityCalculatorSuite extends ItemItemSuite {
     val jobTest = JobTest(new ItemSimilarityCalculator(_))
         .arg("ratings-table-uri", userRatingsUri)
         .arg("similarity-table-uri", itemItemSimilaritiesUri)
-        .source(
-            KijiInput(
-                userRatingsUri,
-                Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo)),
-            slices)
-        .sink(KijiOutput(itemItemSimilaritiesUri,
-            Map('mostSimilar -> QualifiedColumnOutputSpec(
-                "most_similar",
-                "most_similar",
-                specificClass = classOf[AvroSortedSimilarItems]
-                ))))
-            {validateOutput}
+        .source(kijiInputUserRatings, userRatingsSlices)
+        .sink(kijiOutputItemSimilarities) {validateOutput}
 
     // Run in local mode.
     jobTest.run.finish
