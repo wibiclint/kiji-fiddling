@@ -83,8 +83,7 @@ class ItemScorerSuite extends ItemItemSuite {
     val jobTest = JobTest(new ItemScorer(_))
         .arg("similarity-table-uri", itemItemSimilaritiesUri)
         .arg("ratings-table-uri", userRatingsUri)
-        .arg("user", myUser.toString)
-        .arg("item", myItem.toString)
+        .arg("users-and-items", myUser + ":" + myItem)
         .arg("k", "30")
         .source(KijiInput(
             itemItemSimilaritiesUri,

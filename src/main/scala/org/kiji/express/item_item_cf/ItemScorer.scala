@@ -42,16 +42,22 @@ import org.kiji.express.item_item_cf.avro._
 class ItemScorer(args: Args) extends ItemItemJob(args) {
   val logger: Logger = LoggerFactory.getLogger(classOf[ItemScorer])
 
+  val usersAndItems: List[(Long, Long)] = args("users-and-items")
+      .split(",")
+      .map { userAndItem: String => {
+        val Array(user,item) = userAndItem.split(":")
+        (user.toLong, item.toLong)
+      }}.toList
+
+  val usersSet = usersAndItems.map( _._1 ).toSet
+  val itemsSet = usersAndItems.map( _._2 ).toSet
+
+  /*
   val user = args("user").toLong
   val userEntityId = EntityId(user)
-  val item = args("item").toLong
+  val items = args("items").split(":")toLong
   val itemEntityId = EntityId(item)
-
-  println("--------------------------------------------------------------------------------")
-  println("Running ItemScorer")
-  println("--------------------------------------------------------------------------------")
-
-  logger.debug("Starting the ItemScorer")
+  */
 
   def extractItemIdAndSimilarity(slice: Seq[Cell[AvroSortedSimilarItems]]): Seq[(Long, Double)] = {
     slice.flatMap { cell => {
@@ -71,48 +77,56 @@ class ItemScorer(args: Args) extends ItemItemJob(args) {
             "most_similar",
             specificRecord = classOf[AvroSortedSimilarItems]
       ) -> 'most_similar))
+
       // We care about only the data for one item
-      .filter('entityId) { eid: EntityId => eid == itemEntityId }
-      //.map('entityId -> 'itemId) { eid: EntityId => eid.components(0) }
+      .map('entityId -> 'itemId) { eid: EntityId => eid.components(0) }
+      .filter('itemId)(itemsSet.contains)
+
       // Extract out the itemId and similarity score for the similar items
       .flatMap('most_similar -> ('similarItem, 'similarity)) { extractItemIdAndSimilarity }
-      //.project('itemId, 'similarItem, 'similarity)
-      .project('similarItem, 'similarity)
-      .debug
 
+      .project('itemId, 'similarItem, 'similarity)
+      .rename('itemId -> 'itemToScoreId)
 
   // Read in user ratings for various items
-  val userRatingsPipe = createUserRatingsPipe(Some(args("user").toLong))
-      .debug
+  val userRatingsPipe = createUserRatingsPipe()
+      .filter('userId)(usersSet.contains)
 
   // Select only the most similar items that the user has rated
   val mostSimilarItemsThatUserHasRatedPipe = mostSimilarPipe
       .joinWithSmaller('similarItem -> 'itemId, userRatingsPipe)
-      .project('similarItem, 'similarity, 'rating)
+      .project('userId, 'itemToScoreId, 'similarItem, 'similarity, 'rating)
+      .filter('userId, 'itemToScoreId) { x: (Long, Long) => {
+        val (userId, itemToScoreId) = x
+        usersSet.contains(userId) && itemsSet.contains(itemToScoreId)
+      }}
 
   // Sort, and then take the top K
   val neighborsPipe = mostSimilarItemsThatUserHasRatedPipe
-      .groupAll { _.sortedReverseTake[(Double, Long, Double)] (
-          ('similarity, 'similarItem, 'rating) -> 'res, args("k").toInt) }
-      .flattenTo[(Double, Long, Double)] ('res -> ('similarity, 'similarItem, 'rating))
+      .groupBy(('userId, 'itemToScoreId))
+      { _.sortedReverseTake[(Long, Long, Double, Long, Double)] (
+          ('userId, 'itemToScoreId, 'similarity, 'similarItem, 'rating)
+              -> 'res, args("k").toInt) }
+      .flattenTo[(Long, Long, Double, Long, Double)] ('res ->
+          ('userId, 'itemToScoreId, 'similarity, 'similarItem, 'rating))
       .debug
 
   // Sum of all of the similarities is the denominator
   val denom = neighborsPipe
-      .groupAll {
-        _.sum('similarity -> 'denom)
-      }
-      .project('denom)
+      .groupBy(('userId, 'itemToScoreId)) { _.sum('similarity -> 'denom) }
+      .project('userId, 'itemToScoreId, 'denom)
 
   val numer = neighborsPipe
-      .mapTo(('similarity, 'rating) -> ('scoreTerm)) { x: (Double, Double) => x._1 * x._2 }
-      .groupAll { _.sum('scoreTerm -> 'numer) }
-      .project('numer)
+      .map(('similarity, 'rating) -> ('scoreTerm)) { x: (Double, Double) => x._1 * x._2 }
+      .groupBy(('userId, 'itemToScoreId)) { _.sum('scoreTerm -> 'numer) }
+      .project('userId, 'itemToScoreId, 'numer)
+      // AYFKM?
+      .rename(('userId, 'itemToScoreId) -> ('userIdNumer, 'itemToScoreIdNumer))
 
   denom
-      .crossWithTiny(numer)
-      .mapTo(('numer, 'denom) -> 'score) { x: (Double, Double) => x._1 / x._2 }
+      .joinWithSmaller(('userId, 'itemToScoreId) ->
+          ('userIdNumer, 'itemToScoreIdNumer), numer)
+      .map(('numer, 'denom) -> 'score) { x: (Double, Double) => x._1 / x._2 }
+      .project('userId, 'itemToScoreId, 'score)
       .write(Tsv("foo"))
-
-
 }
