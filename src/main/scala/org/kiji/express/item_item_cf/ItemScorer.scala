@@ -80,7 +80,27 @@ class ItemScorer(args: Args) extends ItemItemJob(args) {
   val mostSimilarItemsThatUserHasRatedPipe = mostSimilarPipe
       .joinWithSmaller('similarItem -> 'itemId, userRatingsPipe)
       .project('similarItem, 'similarity, 'rating)
-      .write(Tsv("foo"))
 
   // Sort, and then take the top K
+  val neighborsPipe = mostSimilarItemsThatUserHasRatedPipe
+      .groupAll { _.sortedReverseTake[(Double, Long, Double)] (
+          ('similarity, 'similarItem, 'rating) -> 'res, args("k").toInt) }
+      .flattenTo[(Double, Long, Double)] ('res -> ('similarity, 'similarItem, 'rating))
+
+  // Sum of all of the similarities is the denominator
+  val denom = neighborsPipe
+      .groupAll {
+        _.sum('similarity -> 'denom)
+      }
+
+  val numer = neighborsPipe
+      .mapTo(('similarity, 'rating) -> ('scoreTerm)) { x: (Double, Double) => x._1 * x._2 }
+      .groupAll { _.sum('scoreTerm -> 'numer) }
+
+  denom
+      .crossWithTiny(numer)
+      .mapTo(('numer, 'denom) -> 'score) { x: (Double, Double) => x._1 / x._2 }
+      .write(Tsv("foo"))
+
+
 }

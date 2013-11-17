@@ -22,8 +22,10 @@ Overview of the process:
     - Store the results in this table or in another table?
   * Write score function
     - Input: An active user and the item in question
-    - Get the list of the k nearest neighbors for the item in question
-    - Not clear exactly what to do here
+    - Get the list of the k nearest neighbors for the item in question (that the user has also
+      rated)
+    - The score is the sum of similarities * ratings (from the user), divided by the sum of all of
+      the similarities
     - Output: A score for this item
 
 Inspired by Mahout implementation: http://isabel-drost.de/hadoop/slides/collabMahout.pdf

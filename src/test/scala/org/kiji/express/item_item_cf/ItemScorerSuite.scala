@@ -74,7 +74,8 @@ class ItemScorerSuite extends ItemItemSuite {
             avroSortedSimilarItems)
           )))
 
-  def validateOutput(output: mutable.Buffer[(Long, Double, Double)]): Unit = {
+  //def validateOutput(output: mutable.Buffer[(Long, Double, Double)]): Unit = {
+  def validateOutput(output: mutable.Buffer[Any]): Unit = {
     println(output)
   }
 
@@ -84,6 +85,7 @@ class ItemScorerSuite extends ItemItemSuite {
         .arg("ratings-table-uri", userRatingsUri)
         .arg("user", myUser.toString)
         .arg("item", myItem.toString)
+        .arg("k", "30")
         .source(KijiInput(
             itemItemSimilaritiesUri,
             columns = Map(
