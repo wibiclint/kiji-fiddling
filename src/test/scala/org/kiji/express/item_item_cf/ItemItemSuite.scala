@@ -126,7 +126,8 @@ abstract class ItemItemSuite extends KijiSuite {
         Cell[Double]("ratings", "11", version, 5.0),
         Cell[Double]("ratings", "21", version, 0.0))))
 
-  val kijiInputUserRatings = KijiInput(userRatingsUri, Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo))
+  val kijiInputUserRatings =
+      KijiInput(userRatingsUri, Map(ColumnFamilyInputSpec("ratings") -> 'ratingInfo))
   val kijiOutputItemSimilarities = KijiOutput(itemItemSimilaritiesUri,
       Map('mostSimilar -> QualifiedColumnOutputSpec(
           "most_similar",

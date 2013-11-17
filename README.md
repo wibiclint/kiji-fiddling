@@ -122,6 +122,22 @@ Create the item-item similarity list
         --similarity-table-uri ${KIJI}/item_item_similarities \
         --hdfs
 
+    express job target/kiji-express-item-item-cf-XXX.jar org.kiji.express.item_item_cf.ItemSimilarityCalculator --ratings-table-uri ${KIJI}/user_ratings --similarity-table-uri ${KIJI}/item_item_similarities --hdfs
+
+Run the scorer
+------------------------------------
+
+    express job target/kiji-express-item-item-cf-XXX.jar \
+        org.kiji.express.item_item_cf.ItemScorer \
+        --ratings-table-uri ${KIJI}/user_ratings \
+        --similarity-table-uri ${KIJI}/item_item_similarities \
+        --user 1024 \
+        --item 77 \
+        --k 20 \
+        --hdfs
+
+    express job target/kiji-express-item-item-cf-XXX.jar org.kiji.express.item_item_cf.ItemScorer --ratings-table-uri ${KIJI}/user_ratings --similarity-table-uri ${KIJI}/item_item_similarities --user 1024 --item 77 --k 20 --hdfs
+
 Debugging
 ---------
 

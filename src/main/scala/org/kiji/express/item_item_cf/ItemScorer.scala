@@ -40,11 +40,18 @@ import org.kiji.express.item_item_cf.avro._
  * @param args passed in from the command line.
  */
 class ItemScorer(args: Args) extends ItemItemJob(args) {
+  val logger: Logger = LoggerFactory.getLogger(classOf[ItemScorer])
 
   val user = args("user").toLong
   val userEntityId = EntityId(user)
   val item = args("item").toLong
   val itemEntityId = EntityId(item)
+
+  println("--------------------------------------------------------------------------------")
+  println("Running ItemScorer")
+  println("--------------------------------------------------------------------------------")
+
+  logger.debug("Starting the ItemScorer")
 
   def extractItemIdAndSimilarity(slice: Seq[Cell[AvroSortedSimilarItems]]): Seq[(Long, Double)] = {
     slice.flatMap { cell => {
@@ -71,10 +78,12 @@ class ItemScorer(args: Args) extends ItemItemJob(args) {
       .flatMap('most_similar -> ('similarItem, 'similarity)) { extractItemIdAndSimilarity }
       //.project('itemId, 'similarItem, 'similarity)
       .project('similarItem, 'similarity)
+      .debug
 
 
   // Read in user ratings for various items
   val userRatingsPipe = createUserRatingsPipe(Some(args("user").toLong))
+      .debug
 
   // Select only the most similar items that the user has rated
   val mostSimilarItemsThatUserHasRatedPipe = mostSimilarPipe
@@ -86,16 +95,19 @@ class ItemScorer(args: Args) extends ItemItemJob(args) {
       .groupAll { _.sortedReverseTake[(Double, Long, Double)] (
           ('similarity, 'similarItem, 'rating) -> 'res, args("k").toInt) }
       .flattenTo[(Double, Long, Double)] ('res -> ('similarity, 'similarItem, 'rating))
+      .debug
 
   // Sum of all of the similarities is the denominator
   val denom = neighborsPipe
       .groupAll {
         _.sum('similarity -> 'denom)
       }
+      .project('denom)
 
   val numer = neighborsPipe
       .mapTo(('similarity, 'rating) -> ('scoreTerm)) { x: (Double, Double) => x._1 * x._2 }
       .groupAll { _.sum('scoreTerm -> 'numer) }
+      .project('numer)
 
   denom
       .crossWithTiny(numer)

@@ -89,7 +89,8 @@ class ItemSimilarityCalculatorSuite extends ItemItemSuite {
 
    */
 
-  def validateOutput(output: mutable.Buffer[(EntityId, List[Cell[AvroSortedSimilarItems]])]): Unit = {
+  def validateOutput(
+      output: mutable.Buffer[(EntityId, List[Cell[AvroSortedSimilarItems]])]): Unit = {
     assert(output.size === 2)
     val pairs2scores = output
         .map { x: (EntityId, List[Cell[AvroSortedSimilarItems]]) => {
