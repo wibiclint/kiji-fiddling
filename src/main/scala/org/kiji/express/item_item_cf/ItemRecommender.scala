@@ -55,6 +55,12 @@ class ItemRecommender(args: Args) extends ItemItemJob(args) {
       // similar.
       .project('similarItem, 'similarity)
       .groupBy('similarItem) { _.sum('similarity) }
-      .write(Tsv("foo"))
 
+  // Attach the actual movie titles
+  val formattedPipe = attachMovieTitles(mostSimilarPipe, 'similarItem)
+      .groupAll { _.sortBy('similarity) }
+      .map('similarity -> 'score_str) { score: Double => "%.4f".format(score) }
+      .project('similarItem, 'score_str, 'title)
+
+    formattedPipe.write(Csv("recommendation", fields=('similarItem, 'score_str, 'title)))
 }

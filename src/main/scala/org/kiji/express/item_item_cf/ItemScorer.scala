@@ -42,12 +42,12 @@ import org.kiji.express.item_item_cf.avro._
 class ItemScorer(args: Args) extends ItemItemJob(args) {
   val logger: Logger = LoggerFactory.getLogger(classOf[ItemScorer])
 
-  val usersAndItems: List[(Long, Long)] = args("users-and-items")
+  val usersAndItems: Set[(Long, Long)] = args("users-and-items")
       .split(",")
       .map { userAndItem: String => {
         val Array(user,item) = userAndItem.split(":")
         (user.toLong, item.toLong)
-      }}.toList
+      }}.toSet
 
   val usersSet = usersAndItems.map( _._1 ).toSet
   val itemsSet = usersAndItems.map( _._2 ).toSet
@@ -77,7 +77,6 @@ class ItemScorer(args: Args) extends ItemItemJob(args) {
               -> 'res, args("k").toInt) }
       .flattenTo[(Long, Long, Double, Long, Double)] ('res ->
           ('userId, 'itemToScoreId, 'similarity, 'similarItem, 'rating))
-      .debug
 
   // Sum of all of the similarities is the denominator
   val denom = neighborsPipe
@@ -91,10 +90,24 @@ class ItemScorer(args: Args) extends ItemItemJob(args) {
       // AYFKM?
       .rename(('userId, 'itemToScoreId) -> ('userIdNumer, 'itemToScoreIdNumer))
 
-  denom
+  val scorePipe = denom
       .joinWithSmaller(('userId, 'itemToScoreId) ->
           ('userIdNumer, 'itemToScoreIdNumer), numer)
       .map(('numer, 'denom) -> 'score) { x: (Double, Double) => x._1 / x._2 }
       .project('userId, 'itemToScoreId, 'score)
-      .write(Tsv("foo"))
+
+      // Filter out any movie pairs not in the original user input
+      .filter(('userId, 'itemToScoreId))(usersAndItems.contains)
+
+  // Attach the actual movie titles
+  val formattedPipe = attachMovieTitles(scorePipe, 'itemToScoreId)
+      .map('score -> 'score_str) { score: Double => "%.4f".format(score) }
+      .project('userId, 'itemToScoreId, 'score_str, 'title)
+
+  if (args("output-mode") == "test") {
+    formattedPipe.write(Csv("score"))
+  } else {
+    formattedPipe.write(Csv("score", fields=('userId, 'itemToScoreId, 'score_str, 'title)))
+    //formattedPipe.write(Csv("score"))
+  }
 }

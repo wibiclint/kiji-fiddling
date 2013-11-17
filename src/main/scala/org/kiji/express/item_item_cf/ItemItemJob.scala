@@ -25,6 +25,7 @@ import scala.collection.JavaConverters._
 import cascading.pipe.Pipe
 import cascading.pipe.joiner.LeftJoin
 import com.twitter.scalding._
+import org.apache.avro.util.Utf8
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -108,5 +109,23 @@ abstract class ItemItemJob(args: Args) extends KijiJob(args) {
 
         .project('itemId, 'similarItem, 'similarity)
         .rename('itemId -> 'itemToScoreId)
+  }
+
+
+  /**
+   * Read in the movie titles and attach them to another stream with movie IDs in a given field.
+   *
+   */
+  def attachMovieTitles(pipe: Pipe, movieIdField: Symbol): Pipe = {
+      KijiInput(args("titles-table-uri"), "info:title" -> 'title)
+          // Get the movieIds from the entity IDs
+          .map('entityId -> 'movieId) { eid: EntityId => eid.components(0) }
+          // Extract the actual movie title
+          .map('title -> 'title) { cellseq: Seq[Cell[CharSequence]] => {
+            assert(cellseq.size == 1)
+            cellseq.head.datum.toString
+          }}
+          .joinWithLarger('movieId -> movieIdField, pipe)
+          .discard('movieId)
   }
 }

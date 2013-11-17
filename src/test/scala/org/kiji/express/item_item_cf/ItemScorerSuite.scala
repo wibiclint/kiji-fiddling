@@ -28,6 +28,7 @@ import com.twitter.scalding.Args
 import com.twitter.scalding.JobTest
 import com.twitter.scalding.TextLine
 import com.twitter.scalding.Tsv
+import com.twitter.scalding.Csv
 import org.apache.avro.generic.GenericRecord
 import org.apache.avro.generic.GenericRecordBuilder
 import org.apache.avro.specific.SpecificRecord
@@ -74,8 +75,8 @@ class ItemScorerSuite extends ItemItemSuite {
             avroSortedSimilarItems)
           )))
 
-  //def validateOutput(output: mutable.Buffer[(Long, Double, Double)]): Unit = {
-  def validateOutput(output: mutable.Buffer[Any]): Unit = {
+  def validateOutput(output: mutable.Buffer[(Long, Long, String, String)]): Unit = {
+  //def validateOutput(output: mutable.Buffer[Any]): Unit = {
     println(output)
   }
 
@@ -84,7 +85,9 @@ class ItemScorerSuite extends ItemItemSuite {
         .arg("similarity-table-uri", itemItemSimilaritiesUri)
         .arg("ratings-table-uri", userRatingsUri)
         .arg("users-and-items", myUser + ":" + myItem)
+        .arg("titles-table-uri", titlesUri)
         .arg("k", "30")
+        .arg("output-mode", "test")
         .source(KijiInput(
             itemItemSimilaritiesUri,
             columns = Map(
@@ -94,7 +97,9 @@ class ItemScorerSuite extends ItemItemSuite {
                   specificRecord = classOf[AvroSortedSimilarItems]
             ) -> 'most_similar)), itemSimSlices)
         .source(kijiInputUserRatings, userRatingsSlices)
-        .sink(Tsv("foo")) { validateOutput }
+        .source(kijiInputTitles, titlesSlices)
+        .sink(Csv("score")) {validateOutput}
+
 
     // Run in local mode.
     jobTest.run.finish

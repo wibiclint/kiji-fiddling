@@ -39,7 +39,7 @@ Download & Start Bento
 
 
 Setup
-------
+-----
     export DOGFOOD_CF_HOME = path/to/tutorial/root/dir
     export KIJI_CLASSPATH=target/kiji-express-item-item-cf-XXX.jar
 
@@ -48,12 +48,15 @@ Install a Kiji instance.
     export KIJI=kiji://.env/item_item_cf
     kiji install --kiji=${KIJI}
 
-
 Create the movie table
 ----------------------
 
     kiji-schema-shell --kiji=${KIJI} --file=$DOGFOOD_CF_HOME/src/main/resources/org/kiji/express/item_item_cf/movies.ddl
 
+Create the movie titles table
+-----------------------------
+
+    kiji-schema-shell --kiji=${KIJI} --file=$DOGFOOD_CF_HOME/src/main/resources/org/kiji/express/item_item_cf/titles.ddl
 
 Inspect the movie table
 -----------------------
@@ -131,12 +134,13 @@ Run the scorer
         org.kiji.express.item_item_cf.ItemScorer \
         --ratings-table-uri ${KIJI}/user_ratings \
         --similarity-table-uri ${KIJI}/item_item_similarities \
+        --titles-table-uri ${KIJI}/movie_titles \
         --user 1024 \
         --item 77 \
         --k 20 \
         --hdfs
 
-    express job target/kiji-express-item-item-cf-XXX.jar org.kiji.express.item_item_cf.ItemScorer --ratings-table-uri ${KIJI}/user_ratings --similarity-table-uri ${KIJI}/item_item_similarities --users-and-items 1024:77 --k 20 --hdfs
+    express job target/kiji-express-item-item-cf-XXX.jar org.kiji.express.item_item_cf.ItemScorer --ratings-table-uri ${KIJI}/user_ratings --similarity-table-uri ${KIJI}/item_item_similarities --k 20 --hdfs --titles-table-uri ${KIJI}/movie_titles --users-and-items 1024:77
 
 Run the recommender
 -------------------
@@ -144,10 +148,11 @@ Run the recommender
     express job target/kiji-express-item-item-cf-XXX.jar \
         org.kiji.express.item_item_cf.ItemRecommender \
         --similarity-table-uri ${KIJI}/item_item_similarities \
+        --titles-table-uri ${KIJI}/movie_titles \
         --items 77 \
         --hdfs
 
-    express job target/kiji-express-item-item-cf-XXX.jar org.kiji.express.item_item_cf.ItemRecommender --similarity-table-uri ${KIJI}/item_item_similarities --items 77 --hdfs
+    express job target/kiji-express-item-item-cf-XXX.jar org.kiji.express.item_item_cf.ItemRecommender --similarity-table-uri ${KIJI}/item_item_similarities --items 77 --hdfs --titles-table-uri ${KIJI}/movie_titles
 
 Debugging
 ---------
