@@ -73,6 +73,40 @@ abstract class ItemItemJob(args: Args) extends KijiJob(args) {
 
   }
 
+  def extractItemIdAndSimilarity(slice: Seq[Cell[AvroSortedSimilarItems]]): Seq[(Long, Double)] = {
+    slice.flatMap { cell => {
+      // Get a Scala List of the similar items and similarities
+      val topItems = cell.datum.getTopItems.asScala
+
+      topItems.map { sim: AvroItemSimilarity => (sim.getItemId.toLong, sim.getSimilarity.toDouble) }
+    }}}
+
+  def createMostSimilarItemsPipe(specificItems: Option[Set[Long]] = None): Pipe = {
+    // Get the most similar items to this item
+    // Extract them out of the AvroSortedSimilarItems
+    val mostSimilarPipe = KijiInput(
+        tableUri = args("similarity-table-uri"),
+        columns = Map(
+          QualifiedColumnInputSpec(
+              "most_similar",
+              "most_similar",
+              specificRecord = classOf[AvroSortedSimilarItems]
+        ) -> 'most_similar))
+
+        // We care about only the data for one item
+        .map('entityId -> 'itemId) { eid: EntityId => eid.components(0) }
+
+    val filteredPipe = specificItems match {
+      case None => mostSimilarPipe
+      case Some(itemsSet) => mostSimilarPipe.filter('itemId)(itemsSet.contains)
+    }
 
 
+    filteredPipe
+        // Extract out the itemId and similarity score for the similar items
+        .flatMap('most_similar -> ('similarItem, 'similarity)) { extractItemIdAndSimilarity }
+
+        .project('itemId, 'similarItem, 'similarity)
+        .rename('itemId -> 'itemToScoreId)
+  }
 }
