@@ -38,17 +38,25 @@ import org.kiji.express.item_item_cf.avro._
  * Contains common functionality for different phases in the item-item CF flow.
  *
  */
-// TODO: Possibly make this into two separate classes, which abstract away a lot of horsing around
-// with different tables
 abstract class ItemItemJob(args: Args) extends KijiJob(args) {
 
+  /**
+   * Extract the item ID and item rating from a `FlowCell`.
+   *
+   * @param slice The sequence of cells (should be only one) with ratings for this item.
+   * @return The item ID and rating (as a pair).
+   */
   def extractItemIdAndRating(slice: Seq[FlowCell[Double]]): Seq[(Long,Double)] = {
     slice.map { cell => (cell.qualifier.toLong, cell.datum) }
   }
 
   /**
-   * Get a pipe from the user-ratings table that looks like:
-   * 'userId, 'itemId, 'rating
+   * Query the user-ratings table to produce a pipe with tuples containing a user, item, and
+   * rating.
+   *
+   * @param specificUser An optional specific user for whom to filter the pipe.  Useful for quering
+   * only a single user.
+   * @return A pipe of the form `'userId`, `'itemId`, `'rating`.
    */
   def createUserRatingsPipe(specificUser: Option[Long] = None): Pipe = {
 
@@ -74,6 +82,14 @@ abstract class ItemItemJob(args: Args) extends KijiJob(args) {
 
   }
 
+  /**
+   * Extract the item Id and similarity from a sequence of `FlowCell`s containing Avro records of
+   * most-similar-item vectors.
+   *
+   * @param slice The sequence of cells (should be only one) containing the similarity vector for
+   * the given item.
+   * @return The most-similar items as a `Seq[(itemId, rating)]`.
+   */
   def extractItemIdAndSimilarity(
       slice: Seq[FlowCell[AvroSortedSimilarItems]]): Seq[(Long, Double)] = {
     slice.flatMap { cell => {
@@ -83,6 +99,15 @@ abstract class ItemItemJob(args: Args) extends KijiJob(args) {
       topItems.map { sim: AvroItemSimilarity => (sim.getItemId.toLong, sim.getSimilarity.toDouble) }
     }}}
 
+
+  /**
+   * Query the item-item similarities table to produce a pipe in which each tuple contains an item
+   * ID, the ID of a similar item, and the similarity.
+   *
+   * @param specificItems An optional set of items with which to filter the item IDs in the pipe.
+   * Use this parameter to limit the pipe to similarity vectors for only a set of items.
+   * @return The pipe.
+   */
   def createMostSimilarItemsPipe(specificItems: Option[Set[Long]] = None): Pipe = {
     // Get the most similar items to this item
     // Extract them out of the AvroSortedSimilarItems
@@ -116,6 +141,9 @@ abstract class ItemItemJob(args: Args) extends KijiJob(args) {
   /**
    * Read in the movie titles and attach them to another stream with movie IDs in a given field.
    *
+   * @param pipe The pipe to which to attach movie titles.
+   * @param movieIdField The field within `pipe` that contains the movie IDs to use in the join.
+   * @return The `pipe` with movie titles instead of movie IDs.
    */
   def attachMovieTitles(pipe: Pipe, movieIdField: Symbol): Pipe = {
       KijiInput(args("titles-table-uri"), "info:title" -> 'title)

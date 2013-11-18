@@ -61,7 +61,17 @@ class ItemSimilarityCalculator(args: Args) extends ItemItemJob(args) {
   val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilarityCalculator])
 
 
-  def getRatingPairProducts(itemsAndRatings: List[(Long, Double)]) = {
+  /**
+   * Given a list of items and ratings for a given user, return all of the possibly combinations of
+   * (itemA, itemB, ratingA * ratingB).  We shall use these terms elsewhere for form the dot
+   * products for cosine similarity between items.
+   *
+   * @param itemsAndRatings All of the (item, rating) pairs for this user.
+   * @return An exhaustive list of (itemA, itemB, ratingA * ratingB) tuples.
+   *
+   */
+  def getRatingPairProducts(
+      itemsAndRatings: List[(Long, Double)]): Iterable[(Long, Long, Double)] = {
     for {
       (itemA: Long, ratingA: Double) <- itemsAndRatings
       (itemB: Long, ratingB: Double) <- itemsAndRatings
@@ -70,12 +80,11 @@ class ItemSimilarityCalculator(args: Args) extends ItemItemJob(args) {
 
   }
 
-  //------------------------------------------------------------------------------------------------
-  // Code to create various pipes
-
-
   /**
    * Create a pipe with the mean-adjusted user ratings.
+   *
+   * @param userRatingsPipe A pipe containing the user ratings (unadjusted).
+   * @return A pipe containing normalized user ratings.
    */
   def createMeanAdjustedUserRatingsPipe(userRatingsPipe: Pipe): Pipe = {
 
@@ -111,6 +120,8 @@ class ItemSimilarityCalculator(args: Args) extends ItemItemJob(args) {
    * crossproduct does not fit in main memory, we might have to do something smarter!
    *
    * @param adjustedUserRatingsPipe has fields `userId`, `itemId`, and `rating`.
+   * @ @return A pipe with pairs of (itemA, itemB, similarity), filtered to exclude any negative
+   * similarities.
    */
   def createItemItemSimilaritiesPipe(adjustedUserRatingsPipe: Pipe): Pipe = {
 
@@ -182,6 +193,13 @@ class ItemSimilarityCalculator(args: Args) extends ItemItemJob(args) {
    * Avro records.  Remember for a tuple (itemA, itemB, similarity) to populate the similarity
    * vectors for itemA *and* for itemB.
    *
+   * TODO: This code does way too much stuff with Scalding that should probably be done in Scala
+   * instead.  Even with ~1M different items, presumably a single item's most-similar vector could
+   * fit into main memory (especially after filtering out negative items).
+   *
+   * @param simPipe A pipe containing the (itemA, itemB, similarity) item-item similarity scores.
+   * @return A pipe with `AvroSortedSimilarItems` objects containing sorted arrays of the similarity
+   * vectors for each itemd.
    */
   def createSimilarityRecordsPipe(simPipe: Pipe): Pipe = {
 

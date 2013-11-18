@@ -51,14 +51,17 @@ import org.kiji.schema.layout.KijiTableLayout
 import org.kiji.schema.shell.api.Client
 import org.kiji.express.item_item_cf.avro._
 
+/**
+ * Checks that the item-similarity calculation works correctly by running a simple, contrived
+ * example.
+ */
 @RunWith(classOf[JUnitRunner])
 class ItemSimilarityCalculatorSuite extends ItemItemSuite {
 
   val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilarityCalculatorSuite])
 
 
-
-  /* Results we should see:
+  /* Description of the test case:
 
     - User 100 average rating is 3.3
     - User 101 average rating is 3.3
@@ -89,6 +92,11 @@ class ItemSimilarityCalculatorSuite extends ItemItemSuite {
 
    */
 
+  /**
+   * Checks the results of the item-item similarity calculator.
+   * @param output The output from the item-item similarity calculator (would normally go into a
+   * `KijiTable`.
+   */
   def validateOutput(
       output: mutable.Buffer[(EntityId, List[FlowCell[AvroSortedSimilarItems]])]): Unit = {
     assert(output.size === 2)

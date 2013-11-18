@@ -52,16 +52,23 @@ import org.kiji.express.item_item_cf.avro._
 // Unsavory hacks for convenient comparison of doubles:
 case class Precision(val p:Double)
 
-/*
-// Scala 2.10:
-implicit class DoubleWithAlmostEquals(val d:Double) extends AnyVal {
-    def ~=(d2:Double)(implicit p:Precision) = (d - d2).abs < p.p
-}
-*/
 class WithAlmostEquals(d:Double) {
     def ~=(d2:Double)(implicit p:Precision) = (d-d2).abs <= p.p
 }
+
+/**
+ * Abstract class containing common code for all of the test suites.
+ */
 abstract class ItemItemSuite extends KijiSuite {
+  /**
+   * Read any text file on the class path.  Used here for reading a DDL file to create a test
+   * `KijiTable` from a DDL description.
+   *
+   * Cheers to @tfc for his help with this!
+   *
+   * @param resourcePath The path to the text file.
+   * @return The contents of the file.
+   */
   def readResource(resourcePath: String): String = {
     try {
       val istream: InputStream =
@@ -74,6 +81,17 @@ abstract class ItemItemSuite extends KijiSuite {
     }
   }
 
+  /**
+   * Create a test KijiTable by executing a DDL file in a schema-shell.
+   *
+   * Cheers to @tfc for his help with this!
+   *
+   * @param ddlName The path of the DDL file to execute.
+   * @param tableName The name of the table that the DDL file will create (this needs to agree with
+   * the DDL file).
+   * @param instanceName Optional `KijiInstance` name.
+   * @return A `KijiTable` ready for use in unit tests!
+   */
   def makeTestKijiTableFromDDL(
     ddlName: String,
     tableName: String,
@@ -97,7 +115,10 @@ abstract class ItemItemSuite extends KijiSuite {
     return table
   }
 
+  /** More trickery for comparing doubles. */
   implicit def add_~=(d:Double) = new WithAlmostEquals(d)
+
+  /** This is good enough double-comparison accuracy! */
   implicit val precision = Precision(0.001)
 
   // Create test versions of the tables for user ratings and for similarities

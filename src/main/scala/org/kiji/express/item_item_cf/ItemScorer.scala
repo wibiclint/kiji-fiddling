@@ -34,7 +34,7 @@ import org.kiji.express.flow._
 import org.kiji.express.item_item_cf.avro._
 
 /**
- * Calculate the score for an item for a user by taking the weighted average of that user's rating
+ * Calculate the score for an item for a user by taking the weighted average of that user's ratings
  * for the K most similar items to the item in question.
  *
  * @param args passed in from the command line.

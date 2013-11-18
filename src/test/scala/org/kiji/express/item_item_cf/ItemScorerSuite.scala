@@ -53,6 +53,9 @@ import org.kiji.schema.shell.api.Client
 import org.kiji.express.item_item_cf.avro._
 
 @RunWith(classOf[JUnitRunner])
+/**
+ * Pretty lame test suite that basically just make sure that the scorer runs.
+ */
 class ItemScorerSuite extends ItemItemSuite {
   val logger: Logger = LoggerFactory.getLogger(classOf[ItemSimilarityCalculatorSuite])
 
@@ -75,18 +78,21 @@ class ItemScorerSuite extends ItemItemSuite {
             avroSortedSimilarItems)
           )))
 
+  /** Pretty weak... */
   def validateOutput(output: mutable.Buffer[(Long, Long, String, String)]): Unit = {
-  //def validateOutput(output: mutable.Buffer[Any]): Unit = {
     println(output)
   }
 
-  test("Hmmmm") {
+  test("Test that ItemScorer does not crash outright!") {
     val jobTest = JobTest(new ItemScorer(_))
         .arg("similarity-table-uri", itemItemSimilaritiesUri)
         .arg("ratings-table-uri", userRatingsUri)
         .arg("users-and-items", myUser + ":" + myItem)
         .arg("titles-table-uri", titlesUri)
         .arg("k", "30")
+        // This annoying argument is necessary because the test code won't work with the
+        // application-mode Csv output, because the application-mode Csv output specifies a field
+        // ordering.  Good times!
         .arg("output-mode", "test")
         .source(KijiInput(
             itemItemSimilaritiesUri,
