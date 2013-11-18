@@ -28,6 +28,8 @@ import org.kiji.express.flow._
 /**
  * Populates a table of movie titles.
  *
+ * Reads in a CSV file with records of the form `movieId`, `title`.
+ *
  * @param args passed in from the command line.
  */
 class TitlesImporter(args: Args) extends KijiJob(args) {

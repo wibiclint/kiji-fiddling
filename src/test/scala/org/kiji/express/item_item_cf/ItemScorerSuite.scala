@@ -66,9 +66,9 @@ class ItemScorerSuite extends ItemItemSuite {
       List(new AvroItemSimilarity(11, 0.5)).asJava
   )
 
-  val itemSimSlices: List[(EntityId, Seq[Cell[AvroSortedSimilarItems]])] = List(
+  val itemSimSlices: List[(EntityId, Seq[FlowCell[AvroSortedSimilarItems]])] = List(
     (EntityId(myItem), List(
-        Cell[AvroSortedSimilarItems](
+        FlowCell[AvroSortedSimilarItems](
             "most_similar",
             "most_similar",
             version,

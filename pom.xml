@@ -3,15 +3,9 @@
   <modelVersion>4.0.0</modelVersion>
 
   
-    <!-- Temporary modification to POM -->
-    
-    <!-- Temporary modification to POM -->
     <groupId>org.kiji.express</groupId>
     <artifactId>kiji-express-item-item-cf</artifactId>
     <version>XXX</version>
-    <!-- End temp mod -->
-    
-    <!-- End temp mod -->
     
   <packaging>jar</packaging>
   <inceptionYear>2013</inceptionYear>
@@ -32,7 +26,7 @@
 
   <properties>
     <kiji.framework.version>1.2.1</kiji.framework.version>
-    <express.version>XXX</express.version>
+    <express.version>0.14.0-SNAPSHOT</express.version>
     <modeling.version>0.1.0-SNAPSHOT</modeling.version>
     <scalatest.version>2.0.M5b</scalatest.version>
   </properties>
@@ -49,29 +43,17 @@
     <!-- Kiji -->
     <dependency>
       
-    <!-- Temporary modification to POM -->
-    
-    <!-- Temporary modification to POM -->
     <groupId>org.kiji.express</groupId>
     <artifactId>kiji-express</artifactId>
-    <version>XXX</version>
-    <!-- End temp mod -->
-    
-    <!-- End temp mod -->
-    
+    <version>${express.version}</version>
+
       <scope>provided</scope>
     </dependency>
     <dependency>
       
-    <!-- Temporary modification to POM -->
-    
-    <!-- Temporary modification to POM -->
     <groupId>org.kiji.modeling</groupId>
     <artifactId>kiji-modeling</artifactId>
-    <version>XXX</version>
-    <!-- End temp mod -->
-    
-    <!-- End temp mod -->
+    <version>${modeling.version}</version>
     
       <scope>provided</scope>
     </dependency>
@@ -97,30 +79,18 @@
 
     <dependency>
       
-    <!-- Temporary modification to POM -->
-    
-    <!-- Temporary modification to POM -->
     <groupId>org.kiji.express</groupId>
     <artifactId>kiji-express</artifactId>
-    <version>XXX</version>
-    <!-- End temp mod -->
-    
-    <!-- End temp mod -->
+    <version>${express.version}</version>
     
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
     <dependency>
       
-    <!-- Temporary modification to POM -->
-    
-    <!-- Temporary modification to POM -->
     <groupId>org.kiji.modeling</groupId>
     <artifactId>kiji-modeling</artifactId>
-    <version>XXX</version>
-    <!-- End temp mod -->
-    
-    <!-- End temp mod -->
+    <version>${modeling.version}</version>
     
       <type>test-jar</type>
       <scope>test</scope>

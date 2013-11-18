@@ -196,7 +196,7 @@ class ItemSimilarityCalculator(args: Args) extends ItemItemJob(args) {
     // Group by the first item in the pair and sort to get a sorted list of item similarities
     allSimPipe
         .groupBy('itemA) {
-          _.sortWithTake(('itemB, 'similarity) -> 'topSimPairs, 50)
+          _.sortWithTake(('itemB, 'similarity) -> 'topSimPairs, args("model-size").toInt)
               { (x: (Long, Double), y: (Long, Double)) => x._2 > y._2 } }
           // Now we have tuples of ('itemA, 'topSimPairs = List[(Long, Double)]
 

@@ -28,8 +28,7 @@ import org.kiji.express.flow._
 /**
  * Populates a table of movie ratings.
  *
- * Reads in two CSV files.  One has the movie IDs and their titles, and the other has the movie IDs,
- * user IDs, and ratings.
+ * Reads in a CSV file with records of the form: `user`, `movie`, `rating`.
  *
  * @param args passed in from the command line.
  */
@@ -48,17 +47,4 @@ class MovieImporter(args: Args) extends KijiJob(args) {
           tableUri = args("table-uri"),
           columns = Map(
               'rating -> ColumnFamilyOutputSpec("ratings", 'movie))))
-
-      /*
-  // Get movie titles
-  val moviesStream = Csv(args("titles"), fields=('movie, 'title))
-      .read
-      // Cast the movie id into a Long
-      .mapTo(('movie, 'title) -> ('movie, 'title)) { x: (String, String) => (x._1.toLong, x._2) }
-      .map('movie -> 'entityId) { movie: Long => EntityId(movie) }
-      .write(KijiOutput(
-          tableUri = args("table-uri"),
-          columns = Map('title -> QualifiedColumnOutputSpec("info", "title"))))
-      */
-
 }

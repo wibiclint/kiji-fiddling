@@ -90,10 +90,10 @@ class ItemSimilarityCalculatorSuite extends ItemItemSuite {
    */
 
   def validateOutput(
-      output: mutable.Buffer[(EntityId, List[Cell[AvroSortedSimilarItems]])]): Unit = {
+      output: mutable.Buffer[(EntityId, List[FlowCell[AvroSortedSimilarItems]])]): Unit = {
     assert(output.size === 2)
     val pairs2scores = output
-        .map { x: (EntityId, List[Cell[AvroSortedSimilarItems]]) => {
+        .map { x: (EntityId, List[FlowCell[AvroSortedSimilarItems]]) => {
           val (eid, simItems) = x
           assert(simItems.size === 1)
           val itemA: Long = eid.components(0).asInstanceOf[Long]
@@ -116,6 +116,7 @@ class ItemSimilarityCalculatorSuite extends ItemItemSuite {
     val jobTest = JobTest(new ItemSimilarityCalculator(_))
         .arg("ratings-table-uri", userRatingsUri)
         .arg("similarity-table-uri", itemItemSimilaritiesUri)
+        .arg("model-size", "10")
         .source(kijiInputUserRatings, userRatingsSlices)
         .sink(kijiOutputItemSimilarities) {validateOutput}
 

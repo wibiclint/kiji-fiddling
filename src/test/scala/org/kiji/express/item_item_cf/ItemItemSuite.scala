@@ -65,7 +65,7 @@ abstract class ItemItemSuite extends KijiSuite {
   def readResource(resourcePath: String): String = {
     try {
       val istream: InputStream =
-        classOf[ItemSimilarityCalculatorSuite].getClassLoader().getResourceAsStream(resourcePath)
+        classOf[ItemItemSuite].getClassLoader().getResourceAsStream(resourcePath)
       val content: String = IOUtils.toString(istream)
       istream.close
       content
@@ -121,22 +121,22 @@ abstract class ItemItemSuite extends KijiSuite {
   // Each has also reviewed another item and given that item a different rating, (this ensures
   // that the mean-adjusted rating is not a zero).
   val version: Long = 0L
-  val userRatingsSlices: List[(EntityId, Seq[Cell[Double]])] = List(
+  val userRatingsSlices: List[(EntityId, Seq[FlowCell[Double]])] = List(
     (EntityId(100L), List(
         //                     item           score
-        Cell[Double]("ratings", "10", version, 5.0),
-        Cell[Double]("ratings", "11", version, 5.0),
-        Cell[Double]("ratings", "20", version, 0.0))),
+        FlowCell[Double]("ratings", "10", version, 5.0),
+        FlowCell[Double]("ratings", "11", version, 5.0),
+        FlowCell[Double]("ratings", "20", version, 0.0))),
     (EntityId(101L), List(
-        Cell[Double]("ratings", "10", version, 5.0),
-        Cell[Double]("ratings", "11", version, 5.0),
-        Cell[Double]("ratings", "21", version, 0.0))))
+        FlowCell[Double]("ratings", "10", version, 5.0),
+        FlowCell[Double]("ratings", "11", version, 5.0),
+        FlowCell[Double]("ratings", "21", version, 0.0))))
 
-  val titlesSlices: List[(EntityId, Seq[Cell[String]])] = List(
-    (EntityId(10L), List(Cell("info", "title", version, "Movie 10"))),
-    (EntityId(11L), List(Cell("info", "title", version, "Movie 11"))),
-    (EntityId(20L), List(Cell("info", "title", version, "Movie 20"))),
-    (EntityId(21L), List(Cell("info", "title", version, "Movie 21")))
+  val titlesSlices: List[(EntityId, Seq[FlowCell[String]])] = List(
+    (EntityId(10L), List(FlowCell("info", "title", version, "Movie 10"))),
+    (EntityId(11L), List(FlowCell("info", "title", version, "Movie 11"))),
+    (EntityId(20L), List(FlowCell("info", "title", version, "Movie 20"))),
+    (EntityId(21L), List(FlowCell("info", "title", version, "Movie 21")))
   )
 
   val kijiInputUserRatings =

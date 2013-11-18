@@ -1,5 +1,6 @@
 cd /Users/clint/work/kiji/kiji-bento-chirashi
 source bin/kiji-env.sh
+popd
 export BENTO_LOG_ENABLE=1
 bento start
 export DOGFOOD_CF_HOME=/Users/clint/work/kiji/kiji-express-item-item-cf

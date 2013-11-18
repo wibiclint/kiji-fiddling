@@ -42,7 +42,7 @@ import org.kiji.express.item_item_cf.avro._
 // with different tables
 abstract class ItemItemJob(args: Args) extends KijiJob(args) {
 
-  def extractItemIdAndRating(slice: Seq[Cell[Double]]): Seq[(Long,Double)] = {
+  def extractItemIdAndRating(slice: Seq[FlowCell[Double]]): Seq[(Long,Double)] = {
     slice.map { cell => (cell.qualifier.toLong, cell.datum) }
   }
 
@@ -74,7 +74,8 @@ abstract class ItemItemJob(args: Args) extends KijiJob(args) {
 
   }
 
-  def extractItemIdAndSimilarity(slice: Seq[Cell[AvroSortedSimilarItems]]): Seq[(Long, Double)] = {
+  def extractItemIdAndSimilarity(
+      slice: Seq[FlowCell[AvroSortedSimilarItems]]): Seq[(Long, Double)] = {
     slice.flatMap { cell => {
       // Get a Scala List of the similar items and similarities
       val topItems = cell.datum.getTopItems.asScala
@@ -121,7 +122,7 @@ abstract class ItemItemJob(args: Args) extends KijiJob(args) {
           // Get the movieIds from the entity IDs
           .map('entityId -> 'movieId) { eid: EntityId => eid.components(0) }
           // Extract the actual movie title
-          .map('title -> 'title) { cellseq: Seq[Cell[CharSequence]] => {
+          .map('title -> 'title) { cellseq: Seq[FlowCell[CharSequence]] => {
             assert(cellseq.size == 1)
             cellseq.head.datum.toString
           }}

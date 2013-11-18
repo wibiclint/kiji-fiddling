@@ -1,12 +1,19 @@
+/**
+ * Avro specific records for storing most-similar-item vectors for item-item
+ * collaborative filtering.
+ */
 @namespace("org.kiji.express.item_item_cf.avro")
 protocol ItemItemCF {
 
-  // Similarity to another item
+  /** A single entry in the similarity vector. */
   record AvroItemSimilarity {
     long item_id;
     double similarity;
   }
 
+  /**
+   * Keep a record of the M most-similar items to a given item in a sorted list.
+   */
   record AvroSortedSimilarItems {
     array<AvroItemSimilarity> top_items;
   }
