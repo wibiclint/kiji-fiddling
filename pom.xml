@@ -25,10 +25,12 @@
   </licenses>
 
   <properties>
-    <kiji.framework.version>1.2.1</kiji.framework.version>
     <express.version>0.14.0-SNAPSHOT</express.version>
-    <modeling.version>0.1.0-SNAPSHOT</modeling.version>
+    <modeling.version>0.4.0-SNAPSHOT</modeling.version>
     <scalatest.version>2.0.M5b</scalatest.version>
+    <schema.version>1.3.3</schema.version>
+    <fake-hbase.version>0.1.3</fake-hbase.version>
+    <schema-shell.version>1.3.1</schema-shell.version>
   </properties>
 
   <dependencies>
@@ -42,57 +44,83 @@
 
     <!-- Kiji -->
     <dependency>
-      
-    <groupId>org.kiji.express</groupId>
-    <artifactId>kiji-express</artifactId>
-    <version>${express.version}</version>
+      <groupId>org.kiji.express</groupId>
+      <artifactId>kiji-express</artifactId>
+      <version>${express.version}</version>
+      <scope>provided</scope>
+    </dependency>
 
+    <dependency>
+      <groupId>org.kiji.express</groupId>
+      <artifactId>kiji-express-tools</artifactId>
+      <version>${express.version}</version>
       <scope>provided</scope>
     </dependency>
+
     <dependency>
-      
-    <groupId>org.kiji.modeling</groupId>
-    <artifactId>kiji-modeling</artifactId>
-    <version>${modeling.version}</version>
-    
+      <groupId>org.kiji.modeling</groupId>
+      <artifactId>kiji-modeling</artifactId>
+      <version>${modeling.version}</version>
       <scope>provided</scope>
     </dependency>
+
     <dependency>
-      <groupId>org.kiji.framework</groupId>
-      <artifactId>kiji-framework</artifactId>
-      <version>${kiji.framework.version}</version>
+      <groupId>org.kiji.schema</groupId>
+      <artifactId>kiji-schema</artifactId>
+      <version>${schema.version}</version>
       <scope>provided</scope>
     </dependency>
+
     <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
-      <scope>compile</scope>
+      <groupId>org.kiji.schema-shell</groupId>
+      <artifactId>kiji-schema-shell</artifactId>
+      <version>${schema-shell.version}</version>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Testing -->
+
+    <dependency>
+      <groupId>org.kiji.testing</groupId>
+      <artifactId>fake-hbase</artifactId>
+      <version>${fake-hbase.version}</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.kiji.schema-shell</groupId>
+      <artifactId>kiji-schema-shell</artifactId>
+      <version>${schema-shell.version}</version>
+      <scope>test</scope>
+      <type>test-jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.kiji.schema</groupId>
+      <artifactId>kiji-schema</artifactId>
+      <version>${schema.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.kiji.express</groupId>
+      <artifactId>kiji-express</artifactId>
+      <version>${express.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+
+
+
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
     <dependency>
       <groupId>org.scalatest</groupId>
       <artifactId>scalatest_${scala.version}</artifactId>
       <version>${scalatest.version}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      
-    <groupId>org.kiji.express</groupId>
-    <artifactId>kiji-express</artifactId>
-    <version>${express.version}</version>
-    
-      <type>test-jar</type>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      
-    <groupId>org.kiji.modeling</groupId>
-    <artifactId>kiji-modeling</artifactId>
-    <version>${modeling.version}</version>
-    
-      <type>test-jar</type>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -214,9 +242,4 @@
     </repository>
   </repositories>
 
-  <scm>
-    <connection>scm:git:git@github.com:kijiproject/kiji-express-music.git</connection>
-    <url>scm:git:git@github.com:kijiproject/kiji-express-music.git</url>
-    <developerConnection>scm:git:git@github.com:kijiproject/kiji-express-music.git</developerConnection>
-  </scm>
 </project>

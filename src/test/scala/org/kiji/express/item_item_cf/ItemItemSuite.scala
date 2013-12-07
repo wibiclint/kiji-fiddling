@@ -167,7 +167,7 @@ abstract class ItemItemSuite extends KijiSuite {
       Map('mostSimilar -> QualifiedColumnOutputSpec(
           "most_similar",
           "most_similar",
-          specificClass = classOf[AvroSortedSimilarItems]
+          schemaSpec = SchemaSpec.Specific(classOf[AvroSortedSimilarItems])
           )))
 
   val kijiInputTitles = KijiInput(titlesUri, "info:title" -> 'title)

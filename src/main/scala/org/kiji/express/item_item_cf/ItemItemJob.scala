@@ -31,12 +31,10 @@ import org.slf4j.LoggerFactory
 
 import org.kiji.express._
 import org.kiji.express.flow._
-
 import org.kiji.express.item_item_cf.avro._
 
 /**
  * Contains common functionality for different phases in the item-item CF flow.
- *
  */
 abstract class ItemItemJob(args: Args) extends KijiJob(args) {
 
